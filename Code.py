@@ -1,17 +1,48 @@
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout
+from pytube import YouTube
+from pythumb import Thumbnail
+import os
 
-app = QApplication([])
-window = QWidget()
+def get_photo(url):
+    t = Thumbnail(url)
+    t.fetch()
+    t.save('.')
 
-layout = QVBoxLayout()
+    imgName = url.split("watch?v=")[1]
+    imgName = imgName[:11]
 
-button1 = QPushButton("Button 1")
-layout.addWidget(button1)
+    if os.path.exists("thumbnail.jpg"):
+        os.remove("thumbnail.jpg")
 
-button2 = QPushButton("Button 2")
-layout.addWidget(button2)
+    os.rename(imgName + ".jpg", "thumbnail.jpg")
 
-window.setLayout(layout)
-window.show()
+def convert_video(url):
 
-app.exec_()
+    link = argv[1]
+    yt = YouTube(link)
+
+    print("Title: ", yt.title)
+    print("Length: ", yt.length)
+
+    yd = yt.streams.get_lowest_resolution()
+    yd.download(".")
+
+
+
+get_photo("https://www.youtube.com/watch?v=_FS28OdK9Mc&ab_channel=ReidCaptain")
+
+# app = QApplication([])
+# window = QWidget()
+#
+# layout = QVBoxLayout()
+#
+# button1 = QPushButton("Button 1")
+# layout.addWidget(button1)
+#
+# button2 = QPushButton("Button 2")
+# layout.addWidget(button2)
+#
+# window.setLayout(layout)
+# window.show()
+
+# app.exec_()
