@@ -1,4 +1,6 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout
+from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QVBoxLayout, QMainWindow,
+                             QComboBox, QLabel, QHBoxLayout, QLineEdit)
+from PyQt5.QtGui import QIcon, QColor, QPalette
 from pytube import YouTube
 from pythumb import Thumbnail
 import os
@@ -10,9 +12,9 @@ def get_thumbnail(thumbnail_url):
         # but make sure the url is valid
         t = Thumbnail(thumbnail_url)
 
-    # return false in case of error
-    except Exception as e:
-        return False
+    # return none in case of error
+    except Exception:
+        return None
 
     t.fetch()
     t.save('.')
@@ -24,6 +26,7 @@ def get_thumbnail(thumbnail_url):
 
     # delete the previous thumbnail
     if os.path.exists("thumbnail.jpg"):
+        print("deleting")
         os.remove("thumbnail.jpg")
 
     # standardize the thumbnail name
@@ -31,17 +34,19 @@ def get_thumbnail(thumbnail_url):
     # hide the thumbnail
     os.system("attrib +h " + "thumbnail.jpg")
 
+    return False
+
 
 def convert_video(conversion_url):
     # get the YouTube object
     try:
         # make sure no error while converting
-        conversion_yt = YouTube(conversion_url)
-        return conversion_yt
+        conversion_streams = YouTube(conversion_url).streams
+        return conversion_streams
 
-    # return false in case of error
-    except Exception as e:
-        return False
+    # return none in case of error
+    except Exception:
+        return None
 
 
 def get_streams(streams_yt):
@@ -51,7 +56,7 @@ def get_streams(streams_yt):
             "itag": stream.itag,
             "quality": stream.resolution,
             "type": stream.type
-        } for stream in streams_yt.streams.filter(file_extension="mp4")
+        } for stream in streams_yt.filter(file_extension="mp4")
         if stream.resolution is not None
     ]
 
@@ -62,22 +67,22 @@ def get_streams(streams_yt):
                 "itag": stream.itag,
                 "quality": stream.abr,
                 "type": stream.type
-            } for stream in streams_yt.streams.filter(only_audio=True)
+            } for stream in streams_yt.filter(only_audio=True)
         ]
     )
 
     return stream_list
 
 
-def download(download_yt, download_streams, download_format, download_quality, path="."):
+def download(download_streams, download_dict, download_format, download_quality, path="."):
     # search for the wanted quality and type
-    for stream in download_streams:
+    for stream in download_dict:
         # for debugging only
         print(stream)
 
         if (stream["type"] == download_format) and (stream["quality"] == download_quality):
             # get the stream using the itag from the list of dictionaries
-            to_download = download_yt.streams.get_by_itag(stream["itag"])
+            to_download = download_streams.get_by_itag(stream["itag"])
 
             # for debugging only
             print(to_download)
@@ -90,6 +95,100 @@ def download(download_yt, download_streams, download_format, download_quality, p
     return False
 
 
+def build_app():
+    building_app = QApplication([])
+    building_window = QMainWindow()
+
+    # set the icon and window title
+    building_window.setWindowTitle("Youtube Downloader")
+    icon = QIcon("Icon.png")
+    building_app.setWindowIcon(icon)
+    building_window.setWindowIcon(icon)
+
+    # set window place, size and background color
+    building_window.setGeometry(400, 300, 700, 450)
+    palette = QPalette()
+    palette.setColor(QPalette.Window, QColor(25, 25, 25))
+    building_window.setPalette(palette)
+
+    # instantiate the main widget
+    main_widget = QWidget()
+    text_button_layout = QHBoxLayout()
+    buttons_row_layout = QHBoxLayout()
+    input_layout = QVBoxLayout(main_widget)
+    main_widget.setLayout(input_layout)
+
+    # create the first row of elements (text box, convert button)
+    link_input = QLineEdit()
+    convert_button = QPushButton("Convert")
+
+    # put them in a horizontal layout
+    text_button_layout.addWidget(link_input)
+    text_button_layout.addWidget(convert_button)
+
+    # add the horizontal layout to the vertical layout
+    input_layout.addLayout(text_button_layout)
+
+    # create the second row of elements (combo box, status label, download button)
+    download_button = QPushButton("Download")
+    status_label = QLabel("")
+    quality_box = QComboBox()
+
+    # make the download button inactive by default
+    download_button.setEnabled(False)
+    quality_box.setEnabled(False)
+
+    # put them in a horizontal layout
+    buttons_row_layout.addWidget(quality_box)
+    buttons_row_layout.addWidget(status_label)
+    buttons_row_layout.addWidget(download_button)
+
+    # add the horizontal layout to the vertical layout
+    input_layout.addLayout(buttons_row_layout)
+
+    # put the widget at the center of the window
+    building_window.setCentralWidget(main_widget)
+
+    return building_app, building_window, link_input, convert_button, download_button, quality_box, status_label
+
+
+def conversion_start(text_field, status_msg, download_button, quality_list):
+
+    print("conv started")
+
+    conversion_text = text_field.text()
+
+    print(conversion_text)
+
+    streams = convert_video(conversion_text)
+    if streams is None:
+        print("conv error")
+        # put the status = "Conversion Error"
+        return
+
+    print("converted")
+    # put status = "Converted"
+
+    # put streams into a dictionary
+    stream_list = get_streams(streams)
+
+    if get_thumbnail(conversion_text) is None:
+        print("url error")
+        # put the status = "URL Error"
+        return
+
+    print("thumbnail done")
+
+    download_button.setEnabled(True)
+    quality_list.setEnabled(True)
+    quality_list.clear()
+
+    print("addition started")
+    for stream_item in stream_list:
+        quality_list.addItem(f"{stream_item['quality']} {stream_item['type']}")
+        print(stream_item['quality'], stream_item['type'])
+
+
 # -------------------------- debugging only --------------------------
 # url = "https://www.youtube.com/watch?v=fHI8X4OXluQ&pp=ygUPYmxpbmRpbmcgbGlnaHRz"
 # get_thumbnail(url)
@@ -97,18 +196,13 @@ def download(download_yt, download_streams, download_format, download_quality, p
 # streams = get_streams(yt)
 # download(yt, streams, "audio", "128kbps")
 
-# app = QApplication([])
-# window = QWidget()
-#
-# layout = QVBoxLayout()
-#
-# button1 = QPushButton("Button 1")
-# layout.addWidget(button1)
-#
-# button2 = QPushButton("Button 2")
-# layout.addWidget(button2)
-#
-# window.setLayout(layout)
-# window.show()
 
-# app.exec_()
+# -------------------------- Building App --------------------------
+
+app, window, url_input, convert_but, download_but, qlty_list, status = build_app()
+
+window.show()
+
+convert_but.clicked.connect(lambda: conversion_start(url_input, status, download_but, qlty_list))
+
+app.exec_()
