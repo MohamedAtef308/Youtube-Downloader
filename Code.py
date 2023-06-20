@@ -88,7 +88,7 @@ def download(download_streams, download_dict, download_format, download_quality,
             print(to_download)
 
             # download the stream to the chosen path
-            # to_download.download(path)
+            to_download.download(path)
             return
 
     # return false in case of not finding the wanted settings
@@ -160,7 +160,9 @@ def conversion_start(text_field, status_msg, download_button, quality_list):
 
     print(conversion_text)
 
+    global streams
     streams = convert_video(conversion_text)
+
     if streams is None:
         print("conv error")
         # put the status = "Conversion Error"
@@ -170,7 +172,8 @@ def conversion_start(text_field, status_msg, download_button, quality_list):
     # put status = "Converted"
 
     # put streams into a dictionary
-    stream_list = get_streams(streams)
+    global streams_list
+    streams_list = get_streams(streams)
 
     if get_thumbnail(conversion_text) is None:
         print("url error")
@@ -184,11 +187,19 @@ def conversion_start(text_field, status_msg, download_button, quality_list):
     quality_list.clear()
 
     print("addition started")
-    for stream_item in stream_list:
+    for stream_item in streams_list:
         quality_list.addItem(f"{stream_item['quality']} {stream_item['type']}")
         print(stream_item['quality'], stream_item['type'])
 
 
+def download_start(download_streams, status_msg, quality_list, converted_streams_list):
+    status_msg.setText("Downloading")
+    splitted_choice = quality_list.currentText().split()
+    download_quality = splitted_choice[0]
+    download_format = splitted_choice[1]
+    download(download_streams, converted_streams_list, download_format, download_quality)
+    status_msg.setText("Done")
+    pass
 # -------------------------- debugging only --------------------------
 # url = "https://www.youtube.com/watch?v=fHI8X4OXluQ&pp=ygUPYmxpbmRpbmcgbGlnaHRz"
 # get_thumbnail(url)
@@ -200,9 +211,14 @@ def conversion_start(text_field, status_msg, download_button, quality_list):
 # -------------------------- Building App --------------------------
 
 app, window, url_input, convert_but, download_but, qlty_list, status = build_app()
+streams = None
+streams_list = None
 
 window.show()
 
 convert_but.clicked.connect(lambda: conversion_start(url_input, status, download_but, qlty_list))
+print("------------------------------------")
+print(streams)
+download_but.clicked.connect(lambda: download_start(streams, status, qlty_list, streams_list))
 
 app.exec_()
