@@ -74,7 +74,7 @@ def get_streams(streams_yt):
     return stream_list
 
 
-def download(download_streams, download_dict, download_format, download_quality, path="."):
+def download(download_streams, download_dict, download_format, download_quality):
     # search for the wanted quality and type
     for stream in download_dict:
         # for debugging only
@@ -88,8 +88,8 @@ def download(download_streams, download_dict, download_format, download_quality,
             print(to_download)
 
             # download the stream to the chosen path
-            to_download.download(path)
-            return
+            to_download.download('.')
+            return True
 
     # return false in case of not finding the wanted settings
     return False
@@ -153,63 +153,87 @@ def build_app():
 
 
 def conversion_start(text_field, status_msg, download_button, quality_list):
+    # upadte status label
+    status_msg.setStyleSheet("color: #ffce45;")
+    status_msg.setText("Converting...")
+    status_msg.repaint()
 
-    print("conv started")
-
+    # get the url
     conversion_text = text_field.text()
 
-    print(conversion_text)
-
+    # to get access to the global variable instead of creating a new one and pass the streams to it
     global streams
     streams = convert_video(conversion_text)
 
+    # if the function couldn't process the URL
     if streams is None:
-        print("conv error")
-        # put the status = "Conversion Error"
+        status_msg.setStyleSheet("color: #6e0d25;")
+        status_msg.setText("Conversion Error!")
+        status_msg.repaint()
+
+        # disable downloading when an error happens
+        download_button.setEnabled(False)
+        quality_list.setEnabled(False)
+        quality_list.clear()
         return
 
-    print("converted")
-    # put status = "Converted"
-
-    # put streams into a dictionary
+    # to get access to the global variable instead of creating a new one and pass the streams dictionaries to it
     global streams_list
     streams_list = get_streams(streams)
 
+    # if the function couldn't download the thumbnail
     if get_thumbnail(conversion_text) is None:
-        print("url error")
-        # put the status = "URL Error"
+        status_msg.setStyleSheet("color: #6e0d25;")
+        status_msg.setText("URL Error!")
+        status_msg.repaint()
+
+        # disable downloading when an error happens
+        download_button.setEnabled(False)
+        quality_list.setEnabled(False)
+        quality_list.clear()
         return
 
     print("thumbnail done")
 
+    # activate the download button and the combo box and clear it
     download_button.setEnabled(True)
     quality_list.setEnabled(True)
     quality_list.clear()
 
-    print("addition started")
+    # add elements to the combo box
     for stream_item in streams_list:
         quality_list.addItem(f"{stream_item['quality']} {stream_item['type']}")
-        print(stream_item['quality'], stream_item['type'])
+
+    quality_list.update()
+    download_button.update()
+
+    # update the status label
+    status_msg.setStyleSheet("color: #306844;")
+    status_msg.setText("Conversion Done")
+    status_msg.repaint()
 
 
 def download_start(download_streams, status_msg, quality_list, converted_streams_list):
-    status_msg.setText("Downloading")
+    # update the status label
+    status_msg.setStyleSheet("color: #ffce45;")
+    status_msg.setText("Downloading...")
+    status_msg.repaint()
+
+    # get the quality and type
     splitted_choice = quality_list.currentText().split()
     download_quality = splitted_choice[0]
     download_format = splitted_choice[1]
+
+    # download the stream
     download(download_streams, converted_streams_list, download_format, download_quality)
+
+    # update the status label
+    status_msg.setStyleSheet("color: #306844;")
     status_msg.setText("Done")
-    pass
-# -------------------------- debugging only --------------------------
-# url = "https://www.youtube.com/watch?v=fHI8X4OXluQ&pp=ygUPYmxpbmRpbmcgbGlnaHRz"
-# get_thumbnail(url)
-# yt = convert_video(url)
-# streams = get_streams(yt)
-# download(yt, streams, "audio", "128kbps")
+    status_msg.repaint()
 
 
 # -------------------------- Building App --------------------------
-
 app, window, url_input, convert_but, download_but, qlty_list, status = build_app()
 streams = None
 streams_list = None
@@ -217,8 +241,7 @@ streams_list = None
 window.show()
 
 convert_but.clicked.connect(lambda: conversion_start(url_input, status, download_but, qlty_list))
-print("------------------------------------")
-print(streams)
 download_but.clicked.connect(lambda: download_start(streams, status, qlty_list, streams_list))
 
 app.exec_()
+# url = "https://www.youtube.com/watch?v=fHI8X4OXluQ&pp=ygUPYmxpbmRpbmcgbGlnaHRz"
