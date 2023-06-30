@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QVBoxLayout, QMainWindow,
                              QComboBox, QLabel, QHBoxLayout, QLineEdit)
+from PyQt5.QtCore import QPropertyAnimation
 from PyQt5.QtGui import QIcon, QColor, QPalette, QPixmap
 from pytube import YouTube
 from pythumb import Thumbnail
@@ -48,8 +49,8 @@ def convert_video(conversion_url):
     # get the YouTube object
     try:
         # make sure no error while converting
-        conversion_streams = YouTube(conversion_url)
-        return conversion_streams.streams, conversion_streams.title
+        conversion_result = YouTube(conversion_url)
+        return conversion_result.streams, conversion_result.title
 
     # return none in case of error
     except Exception:
@@ -81,7 +82,7 @@ def get_streams(streams_yt):
     return stream_list
 
 
-def download(download_streams, download_dict, download_format, download_quality):
+def download(download_streams, download_dict, download_format, download_quality, file_title):
     # search for the wanted quality and type
     for stream in download_dict:
         # for debugging only
@@ -94,12 +95,49 @@ def download(download_streams, download_dict, download_format, download_quality)
             # for debugging only
             print(to_download)
 
+            # make the directory if it doesn't exist
+            if not os.path.exists("Downloads"):
+                os.mkdir("Downloads")
+
             # download the stream to the chosen path
-            to_download.download('.')
+            to_download.download("Downloads")
+
+            # if the format wanted is mp3 then rename it
+            if download_format == "audio" and not os.path.exists("Downloads/" + file_title + ".mp4"):
+                os.renames("Downloads/" + file_title + ".mp4", "Downloads/" + file_title + ".mp3")
+
             return True
 
     # return false in case of not finding the wanted settings
     return False
+
+
+def get_button_style(font_color, background_color):
+    button_style = f"""
+                background-color: {background_color};
+                border: 2px solid transparent;
+                border-radius: 15px;
+                font-size: 10pt;
+                color: {font_color};
+                font-weight: bold;
+            """
+    return button_style
+
+
+light_blue = "#5f6993"
+grey = "#2a2a2a"
+
+
+def enter_button(button):
+    if button.isEnabled():
+        global light_blue, grey
+        button.setStyleSheet(get_button_style(grey, light_blue))
+
+
+def leave_button(button):
+    if button.isEnabled():
+        global light_blue, grey
+        button.setStyleSheet(get_button_style(light_blue, grey))
 
 
 def build_app():
@@ -113,7 +151,7 @@ def build_app():
     building_window.setWindowIcon(icon)
 
     # set window place, size and background color
-    building_window.setFixedSize(700,450)
+    building_window.setFixedSize(700, 300)
     palette = QPalette()
     palette.setColor(QPalette.Window, QColor(25, 25, 25))
     building_window.setPalette(palette)
@@ -125,30 +163,64 @@ def build_app():
     input_layout = QVBoxLayout(main_widget)
     main_widget.setLayout(input_layout)
 
+    # --------- styles ---------
+    global light_blue, grey
+
+    # url text input style
+    text_input_style = """
+            font-size: 10pt;
+            padding-left: 10px;
+            border-radius: 15px;
+        """
+
+    # combobox style
+    quality_box_style = """
+            QComboBox::drop-down { width: 0; }
+            
+            QComboBox {
+            border-radius: 15px;
+            border: 3px solid #5f6993;
+            background-color: #2a2a2a;
+            padding: 10px;
+            color: #5f6993;
+            font-weight: bold;
+            font-size: 10pt;
+            }
+        """
+
     # create the first row of elements (text box, convert button)
     link_input = QLineEdit()
-    link_input.setFixedHeight(45)
+    link_input.setFixedSize(500, 41)
+    link_input.setStyleSheet(text_input_style)
+    link_input.setPlaceholderText("Youtube link here")
     convert_button = QPushButton("Convert")
+    convert_button.setStyleSheet(get_button_style(light_blue, grey))
     convert_button.setFixedHeight(45)
 
     # put them in a horizontal layout
     text_button_layout.addWidget(link_input)
     text_button_layout.addWidget(convert_button)
 
+    thumbnail_space = QLabel("")
+    thumbnail_space.setFixedHeight(100)
+    input_layout.addWidget(thumbnail_space)
+
     # add a title label and the horizontal layout to the vertical layout
     title_label = QLabel("")
-    title_label.setStyleSheet("background-color: red;")
-    title_label.setFixedHeight(45)
+    title_label.setStyleSheet("font-size: 12pt; font-weight: bold; color: #5f6993;")
+    title_label.setFixedHeight(38)
     input_layout.addWidget(title_label)
     input_layout.addLayout(text_button_layout)
 
     # create the second row of elements (combo box, status label, download button)
     download_button = QPushButton("Download")
-    download_button.setFixedHeight(45)
+    download_button.setStyleSheet(get_button_style(light_blue, grey))
+    download_button.setFixedSize(200, 45)
     status_label = QLabel("")
     status_label.setFixedHeight(45)
     quality_box = QComboBox()
     quality_box.setFixedHeight(45)
+    quality_box.setStyleSheet(quality_box_style)
 
     # make the download button inactive by default
     download_button.setEnabled(False)
@@ -166,12 +238,12 @@ def build_app():
     building_window.setCentralWidget(main_widget)
 
     return (building_app, building_window, link_input, convert_button,
-            download_button, quality_box, status_label, title_label)
+            download_button, quality_box, status_label, title_label, thumbnail_space)
 
 
-def conversion_start(text_field, status_msg, download_button, quality_list, title_label):
+def conversion_start(text_field, status_msg, download_button, quality_list, title_label, thumbnail_space):
     # update status label
-    status_msg.setStyleSheet("color: #ffce45;")
+    status_msg.setStyleSheet("color: #ffce45; font-size: 12pt; font-weight: bold;")
     status_msg.setText("Converting...")
     status_msg.repaint()
 
@@ -184,7 +256,7 @@ def conversion_start(text_field, status_msg, download_button, quality_list, titl
 
     # if the function couldn't process the URL
     if streams is None:
-        status_msg.setStyleSheet("color: #6e0d25;")
+        status_msg.setStyleSheet("color: #6e0d25; font-size: 12pt; font-weight: bold;")
         status_msg.setText("Conversion Error!")
         status_msg.repaint()
 
@@ -196,7 +268,7 @@ def conversion_start(text_field, status_msg, download_button, quality_list, titl
 
     # if there's no internet connection
     elif streams is False:
-        status_msg.setStyleSheet("color: #6e0d25;")
+        status_msg.setStyleSheet("color: #6e0d25; font-size: 12pt; font-weight: bold;")
         status_msg.setText("Connection Error!")
         status_msg.repaint()
 
@@ -212,7 +284,7 @@ def conversion_start(text_field, status_msg, download_button, quality_list, titl
 
     # if the function couldn't download the thumbnail
     if get_thumbnail(conversion_text) is None:
-        status_msg.setStyleSheet("color: #6e0d25;")
+        status_msg.setStyleSheet("color: #6e0d25; font-size: 12pt; font-weight: bold;")
         status_msg.setText("URL Error!")
         status_msg.repaint()
 
@@ -237,17 +309,23 @@ def conversion_start(text_field, status_msg, download_button, quality_list, titl
     download_button.update()
 
     # update the status label and title label
-    status_msg.setStyleSheet("color: #306844;")
+    status_msg.setStyleSheet("color: #306844; font-size: 12pt; font-weight: bold;")
     status_msg.setText("Conversion Done")
     status_msg.repaint()
-    title_label.setStyleSheet("color: #306844;")
+    title_label.setStyleSheet("color: #306844; font-size: 12pt; font-weight: bold;")
     title_label.setText(vid_title)
     title_label.repaint()
 
+    # update the thumbnail
+    pic = QPixmap("thumbnail.jpg")
+    thumbnail_space.setPixmap(pic)
+    thumbnail_space.setScaledContents(True)
+    thumbnail_space.repaint()
 
-def download_start(download_streams, status_msg, quality_list, converted_streams_list):
+
+def download_start(download_streams, status_msg, quality_list, converted_streams_list, file_title):
     # update the status label
-    status_msg.setStyleSheet("color: #ffce45;")
+    status_msg.setStyleSheet("color: #ffce45; font-size: 12pt; font-weight: bold;")
     status_msg.setText("Downloading...")
     status_msg.repaint()
 
@@ -257,27 +335,30 @@ def download_start(download_streams, status_msg, quality_list, converted_streams
     download_format = splitted_choice[1]
 
     # download the stream
-    download(download_streams, converted_streams_list, download_format, download_quality)
+    download(download_streams, converted_streams_list, download_format, download_quality, file_title)
 
     # update the status label
-    status_msg.setStyleSheet("color: #306844;")
+    status_msg.setStyleSheet("color: #306844; font-size: 12pt; font-weight: bold;")
     status_msg.setText("Done")
     status_msg.repaint()
 
 
 # -------------------------- Building App --------------------------
-app, window, url_input, convert_but, download_but, qlty_list, status, title = build_app()
+app, window, url_input, convert_but, download_but, qlty_list, status, title, thumbnail = build_app()
 streams = None
 streams_list = None
 
+
 window.show()
 
-# pic = QPixmap("thumbnail.jpg")
-# title.setPixmap(pic)
-# title.setScaledContents(True)
+convert_but.clicked.connect(lambda: conversion_start(url_input, status, download_but, qlty_list, title, thumbnail))
+download_but.clicked.connect(lambda: download_start(streams, status, qlty_list, streams_list, title))
 
-convert_but.clicked.connect(lambda: conversion_start(url_input, status, download_but, qlty_list, title))
-download_but.clicked.connect(lambda: download_start(streams, status, qlty_list, streams_list))
+download_but.enterEvent = lambda event: enter_button(download_but)
+download_but.leaveEvent = lambda event: leave_button(download_but)
+
+convert_but.enterEvent = lambda event: enter_button(convert_but)
+convert_but.leaveEvent = lambda event: leave_button(convert_but)
 
 app.exec_()
 # url = "https://www.youtube.com/watch?v=fHI8X4OXluQ&pp=ygUPYmxpbmRpbmcgbGlnaHRz"
