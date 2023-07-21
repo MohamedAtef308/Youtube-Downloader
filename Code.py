@@ -1,6 +1,5 @@
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QVBoxLayout, QMainWindow,
                              QComboBox, QLabel, QHBoxLayout, QLineEdit)
-from PyQt5.QtCore import QPropertyAnimation
 from PyQt5.QtGui import QIcon, QColor, QPalette, QPixmap
 from pytube import YouTube
 from pythumb import Thumbnail
@@ -28,7 +27,7 @@ def get_thumbnail(thumbnail_url):
 
     # delete the previous thumbnail
     if os.path.exists("thumbnail.jpg"):
-        print("deleting")
+        # print("deleting")
         os.remove("thumbnail.jpg")
 
     # standardize the thumbnail name
@@ -86,14 +85,13 @@ def download(download_streams, download_dict, download_format, download_quality,
     # search for the wanted quality and type
     for stream in download_dict:
         # for debugging only
-        print(stream)
+        # print(stream)
 
         if (stream["type"] == download_format) and (stream["quality"] == download_quality):
             # get the stream using the itag from the list of dictionaries
             to_download = download_streams.get_by_itag(stream["itag"])
 
-            # for debugging only
-            print(to_download)
+            # print(to_download)
 
             # make the directory if it doesn't exist
             if not os.path.exists("Downloads"):
@@ -103,8 +101,10 @@ def download(download_streams, download_dict, download_format, download_quality,
             to_download.download("Downloads")
 
             # if the format wanted is mp3 then rename it
-            if download_format == "audio" and not os.path.exists("Downloads/" + file_title + ".mp4"):
-                os.renames("Downloads/" + file_title + ".mp4", "Downloads/" + file_title + ".mp3")
+            if download_format == "audio" and os.path.exists("Downloads/" + file_title.text() + ".webm"):
+                if os.path.exists("Downloads/" + file_title.text() + ".mp3"):
+                    os.remove("Downloads/" + file_title.text() + ".mp3")
+                os.rename(f"Downloads/{file_title.text()}.webm", f"Downloads/{file_title.text()}.mp3")
 
             return True
 
@@ -294,7 +294,7 @@ def conversion_start(text_field, status_msg, download_button, quality_list, titl
         quality_list.clear()
         return
 
-    print("thumbnail done")
+    # print("thumbnail done")
 
     # activate the download button and the combo box and clear it
     download_button.setEnabled(True)
@@ -361,4 +361,3 @@ convert_but.enterEvent = lambda event: enter_button(convert_but)
 convert_but.leaveEvent = lambda event: leave_button(convert_but)
 
 app.exec_()
-# url = "https://www.youtube.com/watch?v=fHI8X4OXluQ&pp=ygUPYmxpbmRpbmcgbGlnaHRz"
