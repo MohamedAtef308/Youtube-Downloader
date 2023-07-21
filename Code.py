@@ -82,6 +82,9 @@ def get_streams(streams_yt):
 
 
 def download(download_streams, download_dict, download_format, download_quality, file_title):
+
+    file_name = file_title.text().replace('|', '')
+
     # search for the wanted quality and type
     for stream in download_dict:
         # for debugging only
@@ -101,10 +104,15 @@ def download(download_streams, download_dict, download_format, download_quality,
             to_download.download("Downloads")
 
             # if the format wanted is mp3 then rename it
-            if download_format == "audio" and os.path.exists("Downloads/" + file_title.text() + ".webm"):
-                if os.path.exists("Downloads/" + file_title.text() + ".mp3"):
-                    os.remove("Downloads/" + file_title.text() + ".mp3")
-                os.rename(f"Downloads/{file_title.text()}.webm", f"Downloads/{file_title.text()}.mp3")
+            if download_format == "audio" and os.path.exists(f"Downloads/{file_name}.webm"):
+                if os.path.exists(f"Downloads/{file_name}.mp3"):
+                    os.remove(f"Downloads/{file_name}.mp3")
+                os.rename(f"Downloads/{file_name}.webm", f"Downloads/{file_name}.mp3")
+
+            elif download_format == "audio" and os.path.exists(f"Downloads/{file_name}.mp4"):
+                if os.path.exists(f"Downloads/{file_name}.mp3"):
+                    os.remove(f"Downloads/{file_name}.mp3")
+            os.rename(f"Downloads/{file_name}.mp4", f"Downloads/{file_name}.mp3")
 
             return True
 
