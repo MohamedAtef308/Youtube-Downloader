@@ -20,10 +20,11 @@ YouTube Downloader is a PyQt5-based desktop application that allows users to dow
 2. Press Convert
 3. Choose the wanted format and quality
 4. Press Download
-5. The wanted file will be inside the **Downloads** folder
+5. The wanted file will be inside the **Downloads** folder<br>
+**Make sure to move the file after downloading so it doesn't get overwritten!**
 <!-- end list -->
 
 ## Packaging
 
-The YouTube Downloader app has been packaged using PyInstaller, which converts the [Python Script](https://github.com/MohamedAtef308/Youtube-Downloader/blob/main/Code.py) into a standalone executable file. To create a new executable file, run the following command:
+The YouTube Downloader app has been packaged using PyInstaller, which converts the [Python Script](https://github.com/MohamedAtef308/Youtube-Downloader/blob/main/Code.py) into a standalone executable file. To create a new executable file, run the following command:<br>
 **pyinstaller -F -noconsole Code.py**
